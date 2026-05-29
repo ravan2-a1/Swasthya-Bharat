@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swasthya Bharat | Medical AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .medical-blue { color: #0277BD; }
+        .bg-medical { background-color: #e0f7fa; }
+        #chat-history { height: 70vh; overflow-y: auto; }
+    </style>
+</head>
+<body class="bg-blue-50">
+
+    <div id="onboarding" class="fixed inset-0 bg-blue-900 flex items-center justify-center z-50 p-4">
+        <div class="bg-white p-8 rounded-2xl w-full max-w-md shadow-2xl">
+            <h1 class="text-2xl font-bold text-blue-900 mb-6 text-center">Swasthya Bharat Onboarding</h1>
+            <input id="uName" type="text" placeholder="Naam" class="w-full p-3 mb-3 border rounded-lg">
+            <input id="uAge" type="number" placeholder="Age" class="w-full p-3 mb-3 border rounded-lg">
+            <input id="uMed" type="text" placeholder="Abhi ki dawaiyaan" class="w-full p-3 mb-3 border rounded-lg">
+            <input id="uAllergy" type="text" placeholder="Allergies" class="w-full p-3 mb-6 border rounded-lg">
+            <button onclick="startApp()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700">Consultation Shuru Karein</button>
+        </div>
+    </div>
+
+    <div id="main-app" class="hidden flex flex-col h-screen">
+        <header class="bg-blue-800 text-white p-4 text-center font-bold text-xl shadow-lg">Swasthya Bharat</header>
+        
+        <div id="chat-history" class="flex-1 p-4 space-y-4">
+            <div id="character" class="text-center py-20 animate-pulse text-8xl">🏥</div>
+        </div>
+
+        <footer class="p-4 bg-white border-t border-blue-200">
+            <input id="msgInput" type="text" class="w-full p-4 border-2 border-blue-200 rounded-xl focus:outline-none" placeholder="Apni health problem batayein...">
+            <p class="text-[10px] text-red-500 mt-2 text-center">DISCLAIMER: Yeh AI tool hai. Dawai lene se pehle doctor se salah lein. Emergency mein turant hospital jayein.</p>
+        </footer>
+    </div>
+
+    <script>
+        const API_KEY = "YOUR_API_KEY_HERE"; // Yahan apni API Key daalein
+
+        function startApp() {
+            document.getElementById('onboarding').style.display = 'none';
+            document.getElementById('main-app').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('character').style.display = 'none';
+            }, 2000);
+        }
+
+        async function getAIResponse(userMessage) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+            const prompt = `User profile: ${document.getElementById('uName').value}, Age: ${document.getElementById('uAge').value}. Current meds: ${document.getElementById('uMed').value}. Allergies: ${document.getElementById('uAllergy').value}. Problem: ${userMessage}. Suggest Allopathic, Homeopathic, and Ayurvedic medicine, explain why, mention prices, and suggest searching for nearest hospital/chemist on Google Maps.`;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const data = await response.json();
+                return data.candidates[0].content.parts[0].text;
+            } catch (e) { return "Server error, kripya baad mein prayas karein."; }
+        }
+
+        document.getElementById('msgInput').addEventListener('keypress', async function (e) {
+            if (e.key === 'Enter' && this.value.trim() !== "") {
+                const chatHistory = document.getElementById('chat-history');
+                chatHistory.innerHTML += `<div class="text-right"><span class="bg-blue-100 p-3 rounded-lg inline-block">${this.value}</span></div>`;
+                const query = this.value;
+                this.value = '';
+                
+                const reply = await getAIResponse(query);
+                chatHistory.innerHTML += `<div class="text-left"><span class="bg-white p-3 rounded-lg shadow inline-block border border-gray-200">${reply}</span></div>`;
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            }
+        });
+    </script>
+</body>
+</html>
