@@ -38,7 +38,7 @@
     </div>
 
     <script>
-        const API_KEY = "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"; // Yahan apni API Key daalein
+        const API_KEY = "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"; // OpenRouter API Key
 
         function startApp() {
             document.getElementById('onboarding').style.display = 'none';
@@ -49,18 +49,64 @@
         }
 
         async function getAIResponse(userMessage) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
-            const prompt = `User profile: ${document.getElementById('uName').value}, Age: ${document.getElementById('uAge').value}. Current meds: ${document.getElementById('uMed').value}. Allergies: ${document.getElementById('uAllergy').value}. Problem: ${userMessage}. Suggest Allopathic, Homeopathic, and Ayurvedic medicine, explain why, mention prices, and suggest searching for nearest hospital/chemist on Google Maps.`;
+            const url = `https://openrouter.ai/api/v1/chat/completions`;
+            const prompt = `You are a helpful Ayurvedic and medical assistant. 
+            
+User Profile:
+- Name: ${document.getElementById('uName').value}
+- Age: ${document.getElementById('uAge').value}
+- Current Medications: ${document.getElementById('uMed').value}
+- Allergies: ${document.getElementById('uAllergy').value}
+
+Health Problem: ${userMessage}
+
+Please provide suggestions in Hindi/English mix:
+1. Allopathic medicine (if applicable) - with price in INR
+2. Homeopathic medicine (if applicable) - with price in INR
+3. Ayurvedic medicine (if applicable) - with price in INR
+
+For each suggestion, explain:
+- Why it's recommended
+- Approximate price in INR
+- Dosage if applicable
+- When to see a doctor
+
+Important: This is for informational purposes only. Always consult a doctor before taking any medication. In emergencies, visit the hospital immediately.`;
 
             try {
                 const response = await fetch(url, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`,
+                        'HTTP-Referer': window.location.href,
+                        'X-Title': 'Swasthya Bharat'
+                    },
+                    body: JSON.stringify({
+                        model: "openrouter/auto",
+                        messages: [
+                            {
+                                role: "user",
+                                content: prompt
+                            }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 1500
+                    })
                 });
+                
                 const data = await response.json();
-                return data.candidates[0].content.parts[0].text;
-            } catch (e) { return "Server error, kripya baad mein prayas karein."; }
+                
+                if (data.choices && data.choices[0] && data.choices[0].message) {
+                    return data.choices[0].message.content;
+                } else if (data.error) {
+                    return `Error: ${data.error.message || 'API request failed'} - Kripya apni API Key check karein.`;
+                } else {
+                    return "Server error, kripya baad mein prayas karein.";
+                }
+            } catch (e) { 
+                return "Network error: " + e.message + " - Kripya internet connection check karein."; 
+            }
         }
 
         document.getElementById('msgInput').addEventListener('keypress', async function (e) {
@@ -70,8 +116,16 @@
                 const query = this.value;
                 this.value = '';
                 
+                // Show loading indicator
+                chatHistory.innerHTML += `<div class="text-left"><span class="bg-gray-200 p-3 rounded-lg shadow inline-block border border-gray-300 animate-pulse">Samadhan dhundh rahe hain...</span></div>`;
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+                
                 const reply = await getAIResponse(query);
-                chatHistory.innerHTML += `<div class="text-left"><span class="bg-white p-3 rounded-lg shadow inline-block border border-gray-200">${reply}</span></div>`;
+                // Remove loading and add reply
+                chatHistory.innerHTML = chatHistory.innerHTML.replace(
+                    '<span class="bg-gray-200 p-3 rounded-lg shadow inline-block border border-gray-300 animate-pulse">Samadhan dhundh rahe hain...</span>',
+                    `<span class="bg-white p-3 rounded-lg shadow inline-block border border-gray-200">${reply}</span>`
+                );
                 chatHistory.scrollTop = chatHistory.scrollHeight;
             }
         });
